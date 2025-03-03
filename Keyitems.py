@@ -109,17 +109,33 @@ def main():
             st.error("Item Number and Item Value are mandatory fields. Please map them correctly.")
         else:
             # Rename columns for consistency
-            population_data.rename(columns={
+            rename_dict = {
                 item_number_col: "Item Number",
-                item_value_col: "Item Value",
-                description_col: "Description",
-                date_col: "Date",
-                currency_col: "Currency",
-                account_number_col: "Account Number"
-            }, inplace=True)
+                item_value_col: "Item Value"
+            }
+            if description_col:
+                rename_dict[description_col] = "Description"
+            if date_col:
+                rename_dict[date_col] = "Date"
+            if currency_col:
+                rename_dict[currency_col] = "Currency"
+            if account_number_col:
+                rename_dict[account_number_col] = "Account Number"
 
-            # Drop unmapped columns
-            population_data = population_data[["Item Number", "Item Value", "Description", "Date", "Currency", "Account Number"]].dropna(how="all", axis=1)
+            population_data.rename(columns=rename_dict, inplace=True)
+
+            # Keep only mapped columns
+            keep_columns = ["Item Number", "Item Value"]
+            if description_col:
+                keep_columns.append("Description")
+            if date_col:
+                keep_columns.append("Date")
+            if currency_col:
+                keep_columns.append("Currency")
+            if account_number_col:
+                keep_columns.append("Account Number")
+
+            population_data = population_data[keep_columns]
 
             st.write("Mapped Data Preview:")
             st.write(population_data.head())
