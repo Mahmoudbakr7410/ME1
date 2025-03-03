@@ -137,6 +137,14 @@ def main():
 
             population_data = population_data[keep_columns]
 
+            # Convert "Item Value" to numeric, handling errors
+            population_data["Item Value"] = pd.to_numeric(population_data["Item Value"], errors="coerce")
+
+            # Drop rows with invalid "Item Value" (e.g., non-numeric values)
+            if population_data["Item Value"].isnull().any():
+                st.warning("Some rows have invalid 'Item Value' and will be dropped.")
+                population_data = population_data.dropna(subset=["Item Value"])
+
             st.write("Mapped Data Preview:")
             st.write(population_data.head())
 
