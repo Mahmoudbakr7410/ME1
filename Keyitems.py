@@ -28,7 +28,30 @@ def get_testing_threshold_percentage(control_approach, account_type, inherent_ri
             return (10, 25) if account_type == "Asset/Income" else (5, 10)
 
 def calculate_key_items_threshold(tolerable_error, percentage_range):
-    return tolerable_error * (percentage_range[0] / 100)
+    st.write(f"Testing Threshold Percentage Range: {percentage_range[0]}% to {percentage_range[1]}%")
+    
+    # Let the user input a specific point within the range
+    selected_percentage = st.number_input(
+        "Enter a specific testing threshold percentage within the range:",
+        min_value=float(percentage_range[0]),
+        max_value=float(percentage_range[1]),
+        value=float(percentage_range[0]),  # Default to lower bound
+        step=0.1
+    )
+    
+    # Check if the selected point is skewed toward the higher end of the range
+    range_midpoint = (percentage_range[0] + percentage_range[1]) / 2
+    if selected_percentage > range_midpoint:
+        st.warning("You have selected a testing threshold percentage skewed toward the higher end of the range.")
+        rationale = st.text_area(
+            "Provide a rationale for choosing a higher testing threshold percentage:",
+            placeholder="Explain why you chose a higher percentage..."
+        )
+        if not rationale:
+            st.error("Please provide a rationale for audit documentation.")
+            return None
+    
+    return tolerable_error * (selected_percentage / 100)
 
 def calculate_coverage_ratio(key_items_sum, total_population_value):
     return (key_items_sum / total_population_value) * 100
@@ -79,12 +102,14 @@ def main():
     tolerable_error = calculate_tolerable_error(planning_materiality, tolerable_error_percentage)
     st.write(f"Tolerable Error: {tolerable_error}")
 
-    # Determine Testing Threshold Percentage
+    # Determine Testing Threshold Percentage Range
     percentage_range = get_testing_threshold_percentage(control_approach, account_type, inherent_risk)
-    st.write(f"Testing Threshold Percentage Range: {percentage_range[0]}% to {percentage_range[1]}%")
-
+    
     # Calculate Key Items Threshold
     key_items_threshold = calculate_key_items_threshold(tolerable_error, percentage_range)
+    if key_items_threshold is None:
+        return  # Stop execution if no rationale is provided for a higher percentage
+
     st.write(f"Key Items Threshold: {key_items_threshold}")
 
     # Upload CSV for Key Items
