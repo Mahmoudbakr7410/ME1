@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+from fpdf import FPDF  # For PDF export
+import tempfile
+import os
 
 # Constants
 PLANNING_MATERIALITY = "Planning Materiality"
@@ -57,6 +60,18 @@ def calculate_coverage_ratio(key_items_sum, total_population_value):
     return (key_items_sum / total_population_value) * 100
 
 # Phase 2: Sample Size Determination
+def determine_cra(control_approach, inherent_risk):
+    if control_approach == "Reliance":
+        if inherent_risk == "Low":
+            return "Minimal CRA"
+        else:
+            return "Low CRA"
+    else:
+        if inherent_risk == "Low":
+            return "Moderate CRA"
+        else:
+            return "High CRA"
+
 def get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio):
     # Define the coverage matrix
     coverage_matrix = {
@@ -72,7 +87,18 @@ def get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio):
             "Medium": {0: 0.3, 10: 0.2},
             "Persuasive": {0: "*", 10: "*", 30: "*", 50: "*", 70: "*", 90: "*", 100: "*"}
         },
-        # Add other CRA levels here...
+        "Moderate CRA": {
+            "Little": {0: 2.1, 10: 2.0, 30: 1.7, 50: 1.4, 70: 0.9},
+            "Some": {0: 1.8, 10: 1.7, 30: 1.4, 50: 1.1, 70: 0.7},
+            "Medium": {0: 1.4, 10: 1.3, 30: 1.0, 50: 0.7, 70: 0.2},
+            "Persuasive": {0: "*", 10: "*", 30: "*", 50: "*", 70: "*", 90: "*", 100: "*"}
+        },
+        "High CRA": {
+            "Little": {0: 2.6, 10: 2.5, 30: 2.3, 50: 1.9, 70: 1.4, 90: 0.3},
+            "Some": {0: 2.4, 10: 2.2, 30: 2.0, 50: 1.7, 70: 1.1},
+            "Medium": {0: 1.9, 10: 1.8, 30: 1.6, 50: 1.3, 70: 0.8},
+            "Persuasive": {0: "*", 10: "*", 30: "*", 50: "*", 70: "*", 90: "*", 100: "*"}
+        }
     }
 
     # Find the closest coverage ratio in the matrix
@@ -83,6 +109,47 @@ def calculate_sample_size(number_of_key_items, multiplier):
     if multiplier == "*":
         return 0  # No sampling required
     return int(number_of_key_items * multiplier)
+
+# Export to PDF
+def export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    
+    pdf.cell(200, 10, txt="Audit Sampling Report", ln=True, align="C")
+    pdf.ln(10)
+    
+    pdf.cell(200, 10, txt=f"Combined Risk Assessment (CRA): {cra_level}", ln=True)
+    pdf.cell(200, 10, txt=f"Assurance Level: {assurance_level}", ln=True)
+    pdf.cell(200, 10, txt=f"Coverage Ratio: {coverage_ratio:.2f}%", ln=True)
+    pdf.cell(200, 10, txt=f"Sample Size: {sample_size}", ln=True)
+    pdf.ln(10)
+    
+    pdf.cell(200, 10, txt="Key Items:", ln=True)
+    for index, row in key_items.iterrows():
+        pdf.cell(200, 10, txt=f"{row['Item Number']} - {row['Item Value']}", ln=True)
+    
+    # Save to a temporary file
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    pdf.output(temp_file.name)
+    return temp_file.name
+
+# Export to Excel
+def export_to_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level):
+    output = pd.DataFrame({
+        "CRA Level": [cra_level],
+        "Assurance Level": [assurance_level],
+        "Coverage Ratio": [coverage_ratio],
+        "Sample Size": [sample_size]
+    })
+    key_items_sheet = key_items.copy()
+    
+    # Save to a temporary file
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    with pd.ExcelWriter(temp_file.name) as writer:
+        output.to_excel(writer, sheet_name="Summary", index=False)
+        key_items_sheet.to_excel(writer, sheet_name="Key Items", index=False)
+    return temp_file.name
 
 # Streamlit App
 def main():
@@ -185,8 +252,11 @@ def main():
 
             # Phase 2: Sample Size Determination
             st.header("Phase 2: Sample Size Determination")
-            cra_level = st.selectbox("Combined Risk Assessment (CRA) Level", ["Minimal CRA", "Low CRA", "Low + Significant Risk CRA", "Moderate CRA", "High CRA", "High + Significant Risk CRA"])
             assurance_level = st.selectbox(ASSURANCE_LEVEL, ["Little", "Some", "Medium", "Persuasive"])
+
+            # Determine CRA based on control approach and inherent risk
+            cra_level = determine_cra(control_approach, inherent_risk)
+            st.write(f"Combined Risk Assessment (CRA): {cra_level}")
 
             # Get Multiplier from Coverage Matrix
             multiplier = get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio)
@@ -196,6 +266,20 @@ def main():
             number_of_key_items = len(key_items)
             sample_size = calculate_sample_size(number_of_key_items, multiplier)
             st.write(f"Final Sample Size: {sample_size}")
+
+            # Export Options
+            st.header("Export Results")
+            if st.button("Export to PDF"):
+                pdf_file = export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
+                with open(pdf_file, "rb") as f:
+                    st.download_button("Download PDF", f, file_name="audit_sampling_report.pdf")
+                os.remove(pdf_file)  # Clean up temporary file
+
+            if st.button("Export to Excel"):
+                excel_file = export_to_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
+                with open(excel_file, "rb") as f:
+                    st.download_button("Download Excel", f, file_name="audit_sampling_report.xlsx")
+                os.remove(excel_file)  # Clean up temporary file
 
 if __name__ == "__main__":
     main()
