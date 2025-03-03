@@ -106,9 +106,9 @@ def get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio):
     return coverage_matrix[cra_level][assurance_level][closest_ratio]
 
 def calculate_sample_size(number_of_key_items, multiplier):
-    if multiplier == "*":
-        return 0  # No sampling required
-    return int(number_of_key_items * multiplier)
+    if multiplier == "*" or multiplier == 0:
+        return number_of_key_items  # Keep key items as is
+    return number_of_key_items + int(number_of_key_items * multiplier)
 
 # Export to PDF
 def export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level):
