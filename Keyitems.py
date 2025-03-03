@@ -91,32 +91,62 @@ def main():
     uploaded_file = st.file_uploader("Upload Population Data (CSV)", type=["csv"])
     if uploaded_file:
         population_data = pd.read_csv(uploaded_file)
-        st.write("Population Data:")
-        st.write(population_data)
+        st.write("Uploaded Data Preview:")
+        st.write(population_data.head())
 
-        # Identify Key Items
-        key_items = population_data[population_data["Value"] >= key_items_threshold]
-        st.write("Key Items:")
-        st.write(key_items)
+        # Column Mapping
+        st.subheader("Map Columns")
+        columns = population_data.columns.tolist()
+        item_number_col = st.selectbox("Select Column for Item Number", columns, index=0)
+        item_value_col = st.selectbox("Select Column for Item Value", columns, index=1)
+        description_col = st.selectbox("Select Column for Description (Optional)", [None] + columns, index=0)
+        date_col = st.selectbox("Select Column for Date (Optional)", [None] + columns, index=0)
+        currency_col = st.selectbox("Select Column for Currency (Optional)", [None] + columns, index=0)
+        account_number_col = st.selectbox("Select Column for Account Number (Optional)", [None] + columns, index=0)
 
-        # Calculate Coverage Ratio
-        key_items_sum = key_items["Value"].sum()
-        coverage_ratio = calculate_coverage_ratio(key_items_sum, total_population_value)
-        st.write(f"Coverage Ratio: {coverage_ratio:.2f}%")
+        # Validate mandatory columns
+        if not item_number_col or not item_value_col:
+            st.error("Item Number and Item Value are mandatory fields. Please map them correctly.")
+        else:
+            # Rename columns for consistency
+            population_data.rename(columns={
+                item_number_col: "Item Number",
+                item_value_col: "Item Value",
+                description_col: "Description",
+                date_col: "Date",
+                currency_col: "Currency",
+                account_number_col: "Account Number"
+            }, inplace=True)
 
-        # Phase 2: Sample Size Determination
-        st.header("Phase 2: Sample Size Determination")
-        cra_level = st.selectbox("Combined Risk Assessment (CRA) Level", ["Minimal CRA", "Low CRA", "Low + Significant Risk CRA", "Moderate CRA", "High CRA", "High + Significant Risk CRA"])
-        assurance_level = st.selectbox(ASSURANCE_LEVEL, ["Little", "Some", "Medium", "Persuasive"])
+            # Drop unmapped columns
+            population_data = population_data[["Item Number", "Item Value", "Description", "Date", "Currency", "Account Number"]].dropna(how="all", axis=1)
 
-        # Get Multiplier from Coverage Matrix
-        multiplier = get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio)
-        st.write(f"Multiplier: {multiplier}")
+            st.write("Mapped Data Preview:")
+            st.write(population_data.head())
 
-        # Calculate Sample Size
-        number_of_key_items = len(key_items)
-        sample_size = calculate_sample_size(number_of_key_items, multiplier)
-        st.write(f"Final Sample Size: {sample_size}")
+            # Identify Key Items
+            key_items = population_data[population_data["Item Value"] >= key_items_threshold]
+            st.write("Key Items:")
+            st.write(key_items)
+
+            # Calculate Coverage Ratio
+            key_items_sum = key_items["Item Value"].sum()
+            coverage_ratio = calculate_coverage_ratio(key_items_sum, total_population_value)
+            st.write(f"Coverage Ratio: {coverage_ratio:.2f}%")
+
+            # Phase 2: Sample Size Determination
+            st.header("Phase 2: Sample Size Determination")
+            cra_level = st.selectbox("Combined Risk Assessment (CRA) Level", ["Minimal CRA", "Low CRA", "Low + Significant Risk CRA", "Moderate CRA", "High CRA", "High + Significant Risk CRA"])
+            assurance_level = st.selectbox(ASSURANCE_LEVEL, ["Little", "Some", "Medium", "Persuasive"])
+
+            # Get Multiplier from Coverage Matrix
+            multiplier = get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio)
+            st.write(f"Multiplier: {multiplier}")
+
+            # Calculate Sample Size
+            number_of_key_items = len(key_items)
+            sample_size = calculate_sample_size(number_of_key_items, multiplier)
+            st.write(f"Final Sample Size: {sample_size}")
 
 if __name__ == "__main__":
     main()
