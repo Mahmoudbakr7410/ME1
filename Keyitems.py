@@ -163,21 +163,6 @@ def main():
     control_approach = st.sidebar.selectbox(CONTROL_APPROACH, ["Reliance", "No Reliance"])
     account_type = st.sidebar.selectbox(ACCOUNT_TYPE, ["Asset/Income", "Liability/Expense"])
     inherent_risk = st.sidebar.selectbox(INHERENT_RISK, ["Low", "High"])
-    total_population_value = st.sidebar.number_input("Total Population Value", min_value=0.0)
-
-    # Calculate Tolerable Error
-    tolerable_error = calculate_tolerable_error(planning_materiality, tolerable_error_percentage)
-    st.write(f"Tolerable Error: {tolerable_error}")
-
-    # Determine Testing Threshold Percentage Range
-    percentage_range = get_testing_threshold_percentage(control_approach, account_type, inherent_risk)
-    
-    # Calculate Key Items Threshold
-    key_items_threshold = calculate_key_items_threshold(tolerable_error, percentage_range)
-    if key_items_threshold is None:
-        return  # Stop execution if no rationale is provided for a higher percentage
-
-    st.write(f"Key Items Threshold: {key_items_threshold}")
 
     # Upload CSV for Key Items
     uploaded_file = st.file_uploader("Upload Population Data (CSV)", type=["csv"])
@@ -240,46 +225,66 @@ def main():
             st.write("Mapped Data Preview:")
             st.write(population_data.head())
 
-            # Identify Key Items
-            key_items = population_data[population_data["Item Value"] >= key_items_threshold]
-            st.write("Key Items:")
-            st.write(key_items)
+            # Automatically calculate total population value
+            total_population_value = population_data["Item Value"].sum()
+            st.write(f"Total Population Value (automatically calculated): {total_population_value}")
 
-            # Calculate Coverage Ratio
-            key_items_sum = key_items["Item Value"].sum()
-            coverage_ratio = calculate_coverage_ratio(key_items_sum, total_population_value)
-            st.write(f"Coverage Ratio: {coverage_ratio:.2f}%")
+            # Calculate Tolerable Error
+            tolerable_error = calculate_tolerable_error(planning_materiality, tolerable_error_percentage)
+            st.write(f"Tolerable Error: {tolerable_error}")
 
-            # Phase 2: Sample Size Determination
-            st.header("Phase 2: Sample Size Determination")
-            assurance_level = st.selectbox(ASSURANCE_LEVEL, ["Little", "Some", "Medium", "Persuasive"])
+            # Determine Testing Threshold Percentage Range
+            percentage_range = get_testing_threshold_percentage(control_approach, account_type, inherent_risk)
+            
+            # Calculate Key Items Threshold
+            key_items_threshold = calculate_key_items_threshold(tolerable_error, percentage_range)
+            if key_items_threshold is None:
+                return  # Stop execution if no rationale is provided for a higher percentage
 
-            # Determine CRA based on control approach and inherent risk
-            cra_level = determine_cra(control_approach, inherent_risk)
-            st.write(f"Combined Risk Assessment (CRA): {cra_level}")
+            st.write(f"Key Items Threshold: {key_items_threshold}")
 
-            # Get Multiplier from Coverage Matrix
-            multiplier = get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio)
-            st.write(f"Multiplier: {multiplier}")
+            # Add a button to run sampling
+            if st.button("Run Sampling"):
+                # Identify Key Items
+                key_items = population_data[population_data["Item Value"] >= key_items_threshold]
+                st.write("Key Items:")
+                st.write(key_items)
 
-            # Calculate Sample Size
-            number_of_key_items = len(key_items)
-            sample_size = calculate_sample_size(number_of_key_items, multiplier)
-            st.write(f"Final Sample Size: {sample_size}")
+                # Calculate Coverage Ratio
+                key_items_sum = key_items["Item Value"].sum()
+                coverage_ratio = calculate_coverage_ratio(key_items_sum, total_population_value)
+                st.write(f"Coverage Ratio: {coverage_ratio:.2f}%")
 
-            # Export Options
-            st.header("Export Results")
-            if st.button("Export to PDF"):
-                pdf_file = export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
-                with open(pdf_file, "rb") as f:
-                    st.download_button("Download PDF", f, file_name="audit_sampling_report.pdf")
-                os.remove(pdf_file)  # Clean up temporary file
+                # Phase 2: Sample Size Determination
+                st.header("Phase 2: Sample Size Determination")
+                assurance_level = st.selectbox(ASSURANCE_LEVEL, ["Little", "Some", "Medium", "Persuasive"])
 
-            if st.button("Export to Excel"):
-                excel_file = export_to_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
-                with open(excel_file, "rb") as f:
-                    st.download_button("Download Excel", f, file_name="audit_sampling_report.xlsx")
-                os.remove(excel_file)  # Clean up temporary file
+                # Determine CRA based on control approach and inherent risk
+                cra_level = determine_cra(control_approach, inherent_risk)
+                st.write(f"Combined Risk Assessment (CRA): {cra_level}")
+
+                # Get Multiplier from Coverage Matrix
+                multiplier = get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio)
+                st.write(f"Multiplier: {multiplier}")
+
+                # Calculate Sample Size
+                number_of_key_items = len(key_items)
+                sample_size = calculate_sample_size(number_of_key_items, multiplier)
+                st.write(f"Final Sample Size: {sample_size}")
+
+                # Export Options
+                st.header("Export Results")
+                if st.button("Export to PDF"):
+                    pdf_file = export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
+                    with open(pdf_file, "rb") as f:
+                        st.download_button("Download PDF", f, file_name="audit_sampling_report.pdf")
+                    os.remove(pdf_file)  # Clean up temporary file
+
+                if st.button("Export to Excel"):
+                    excel_file = export_to_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
+                    with open(excel_file, "rb") as f:
+                        st.download_button("Download Excel", f, file_name="audit_sampling_report.xlsx")
+                    os.remove(excel_file)  # Clean up temporary file
 
 if __name__ == "__main__":
     main()
