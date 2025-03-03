@@ -4,6 +4,18 @@ from fpdf import FPDF  # For PDF export
 import tempfile
 import os
 
+# Custom CSS to set the background color to green
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: #90EE90;  # Light green color
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Constants
 PLANNING_MATERIALITY = "Planning Materiality"
 TOLERABLE_ERROR = "Tolerable Error (50% or 75% of Planning Materiality)"
@@ -239,6 +251,10 @@ def main():
 
             st.write("Mapped Data Preview:")
             st.write(population_data.head())
+
+            # Calculate the sum of the population values
+            total_population_sum = population_data["Item Value"].sum()
+            st.write(f"Total Population Sum: {total_population_sum}")
 
             # Identify Key Items
             key_items = population_data[population_data["Item Value"] >= key_items_threshold]
