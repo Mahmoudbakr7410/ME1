@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
-from fpdf import FPDF  # For PDF export
+from fpdf import FPDF
 import tempfile
 import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import json
 
 # Constants
 PLANNING_MATERIALITY = "Planning Materiality"
@@ -19,28 +20,40 @@ ASSURANCE_LEVEL = "Assurance Level from Other Procedures (Little, Some, Medium, 
 
 # Google Drive API Setup
 SCOPES = ["https://www.googleapis.com/auth/drive"]
-SERVICE_ACCOUNT_FILE = "gifted-monitor-343807-d5625c43bf5e.json"  # Path to your Service Account JSON file
 FOLDER_ID = "1UK_F280M9tNVW9_amB27VHOUMEPCf6ze"  # Your Google Drive folder ID
 
 def authenticate_google_drive():
     """Authenticate and return the Google Drive service."""
-    creds = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES
-    )
-    service = build("drive", "v3", credentials=creds)
-    return service
+    try:
+        # Load the JSON from Streamlit Secrets
+        service_account_info = json.loads(st.secrets["google_credentials"]["service_account_json"])
+        creds = service_account.Credentials.from_service_account_info(
+            service_account_info, scopes=SCOPES
+        )
+        service = build("drive", "v3", credentials=creds)
+        return service
+    except Exception as e:
+        st.error(f"Failed to authenticate Google Drive: {e}")
+        return None
 
 def upload_to_google_drive(file_path, folder_id=FOLDER_ID):
     """Upload a file to Google Drive."""
     service = authenticate_google_drive()
-    file_metadata = {"name": os.path.basename(file_path), "parents": [folder_id]}
-    media = MediaFileUpload(file_path, resumable=True)
-    file = (
-        service.files()
-        .create(body=file_metadata, media_body=media, fields="id")
-        .execute()
-    )
-    return file.get("id")
+    if not service:
+        return None
+
+    try:
+        file_metadata = {"name": os.path.basename(file_path), "parents": [folder_id]}
+        media = MediaFileUpload(file_path, resumable=True)
+        file = (
+            service.files()
+            .create(body=file_metadata, media_body=media, fields="id")
+            .execute()
+        )
+        return file.get("id")
+    except Exception as e:
+        st.error(f"Failed to upload file to Google Drive: {e}")
+        return None
 
 # Phase 1: Key Items Selection
 def calculate_tolerable_error(planning_materiality, tolerable_error_percentage):
@@ -301,7 +314,10 @@ def main():
                     
                     # Upload to Google Drive
                     file_id = upload_to_google_drive(pdf_file)
-                    st.success(f"PDF uploaded to Google Drive with ID: {file_id}")
+                    if file_id:
+                        st.success(f"PDF uploaded to Google Drive with ID: {file_id}")
+                    else:
+                        st.error("Failed to upload PDF to Google Drive.")
                     
                     os.remove(pdf_file)  # Clean up temporary file
 
