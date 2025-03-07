@@ -175,21 +175,6 @@ def main():
     control_approach = st.sidebar.selectbox(CONTROL_APPROACH, ["Reliance", "No Reliance"])
     account_type = st.sidebar.selectbox(ACCOUNT_TYPE, ["Asset/Income", "Liability/Expense"])
     inherent_risk = st.sidebar.selectbox(INHERENT_RISK, ["Low", "High"])
-    total_population_value = st.sidebar.number_input("Total Population Value", min_value=0.0)
-
-    # Calculate Tolerable Error
-    tolerable_error = calculate_tolerable_error(planning_materiality, tolerable_error_percentage)
-    st.write(f"Tolerable Error: {tolerable_error}")
-
-    # Determine Testing Threshold Percentage Range
-    percentage_range = get_testing_threshold_percentage(control_approach, account_type, inherent_risk)
-    
-    # Calculate Key Items Threshold
-    key_items_threshold = calculate_key_items_threshold(tolerable_error, percentage_range)
-    if key_items_threshold is None:
-        return  # Stop execution if no rationale is provided for a higher percentage
-
-    st.write(f"Key Items Threshold: {key_items_threshold}")
 
     # Upload CSV for Key Items
     uploaded_file = st.file_uploader("Upload Population Data (CSV)", type=["csv"])
@@ -253,8 +238,22 @@ def main():
             st.write(population_data.head())
 
             # Calculate the sum of the population values
-            total_population_sum = population_data["Item Value"].sum()
-            st.write(f"Total Population Sum: {total_population_sum}")
+            total_population_value = population_data["Item Value"].sum()
+            st.write(f"Total Population Value: {total_population_value}")
+
+            # Calculate Tolerable Error
+            tolerable_error = calculate_tolerable_error(planning_materiality, tolerable_error_percentage)
+            st.write(f"Tolerable Error: {tolerable_error}")
+
+            # Determine Testing Threshold Percentage Range
+            percentage_range = get_testing_threshold_percentage(control_approach, account_type, inherent_risk)
+            
+            # Calculate Key Items Threshold
+            key_items_threshold = calculate_key_items_threshold(tolerable_error, percentage_range)
+            if key_items_threshold is None:
+                return  # Stop execution if no rationale is provided for a higher percentage
+
+            st.write(f"Key Items Threshold: {key_items_threshold}")
 
             # Identify Key Items
             key_items = population_data[population_data["Item Value"] >= key_items_threshold]
