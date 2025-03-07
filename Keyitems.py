@@ -274,19 +274,23 @@ def main():
                     import time
                     time.sleep(2)  # Simulate a 2-second delay
 
-                    # Export Options
-                    st.header("Export Results")
-                    if st.button("Export to PDF"):
-                        pdf_file = export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
-                        with open(pdf_file, "rb") as f:
-                            st.download_button("Download PDF", f, file_name="audit_sampling_report.pdf")
-                        os.remove(pdf_file)  # Clean up temporary file
+                    # Set a flag to indicate sampling is complete
+                    st.session_state.sampling_complete = True
 
-                    if st.button("Export to Excel"):
-                        excel_file = export_to_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
-                        with open(excel_file, "rb") as f:
-                            st.download_button("Download Excel", f, file_name="audit_sampling_report.xlsx")
-                        os.remove(excel_file)  # Clean up temporary file
+            # Export Options (only show if sampling is complete)
+            if st.session_state.get("sampling_complete", False):
+                st.header("Export Results")
+                if st.button("Export to PDF"):
+                    pdf_file = export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
+                    with open(pdf_file, "rb") as f:
+                        st.download_button("Download PDF", f, file_name="audit_sampling_report.pdf")
+                    os.remove(pdf_file)  # Clean up temporary file
+
+                if st.button("Export to Excel"):
+                    excel_file = export_to_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
+                    with open(excel_file, "rb") as f:
+                        st.download_button("Download Excel", f, file_name="audit_sampling_report.xlsx")
+                    os.remove(excel_file)  # Clean up temporary file
 
 if __name__ == "__main__":
     main()
