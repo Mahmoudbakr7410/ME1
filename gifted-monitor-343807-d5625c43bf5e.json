@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "gifted-monitor-343807",
+  "private_key_id": "d5625c43bf5eb84c2412ae2f790df0430e3e28c7",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDQN3Hcf5wuunxl\nIcHdapkFFQ+moyYljVjx9Kg94hG7RFunmOH64L4ZTgDctliPMT0WCIxLC/dAkMLI\n8fIb/fh37FD2S/wLlyrRDxyJ4ef8uICoWpYRQ4C7h1hHnRgys8bX3oIABGXcuQPL\n4cTPVI/A/4bxhrdIubTBZUW7IzHpPpDnrZ9kN1/C3SYPH7wnTyucgK38kBc24iGO\nNbtMZTwKyxNh0KqjFCTO/dGNUwidYqquyF4KJg4fRqQhPaMtxc8tMFWgAt76JkYz\nBrLpJqvO3EonCjXL/eVnuiGoTD6a+Y2+sJTaSPFiGKwqOWNelTYOAz3rdDRwUNjM\na3YuM2CrAgMBAAECggEAUua4dWfzmeFTNPrvUsal/VGI5TqRLiNslg1ozRbNI4gQ\njBbBZt+DoNSfYEFT2lNq9HJb1WeCvtjETTiTwpRokOrsw1u2kzDRceJ35Ogms0cM\nprtGg8IiJ8g4HG9OWqWclod3sCUQH4Ukn1EZSMls4RV8N38BS7nw342AaYWWUjyI\noRadcozvnR36Ce3HnkAtVYJCLiwvvvyHe3ynrhYLS/r7iMyAwbGo7AbLoOkh5ro2\nQ99P8QFPyxckA+K2E73jlK5cu+U14C9bqAqop98nWZdT6phVPmAL+LzUYVKHIRBu\nQQ5wJgWNkDFWH5v2ned0x7ivIoE14NbsBoMQ4x4NJQKBgQDm+8MgUH2HsoUnocUe\nQeW507Ifl3EmPP2gArslJ2bQZDuaVg2WXjaSuHI9vwuZS7COnOzPl/UGev7fUlpv\nwPjUYi2xnVFY9yaKSQdGyQIgU0ZxMpu5Qh1p7WhguhMq7O2pdBaDZdbq0Jd6tz43\nGhqdXpGZvrVH8FvSL44TSBa5/wKBgQDmxHMJ8sW6bzqLhKvZsC4bg/zSjAHvry9d\nAQvM7RHVHMOVSKXfJWch9nJi7Q2dxmUb7TpdmXoHlXTune8WTUiacdR9vFwfQPAH\nRHcyS4nBrPTxtpseIuYslLUn/0eyD4+fxv3zXsawEEHYnfx6/wMlsfw7KYoGVhYW\n/Nz/8dJhVQKBgQCBAoUNe2dhbzgn1pa+O5gPnkmSk4dDEDWoNV5JdiRaqGER5pZY\nMe7RK+vCyP21dSz7unIZ0ImuQOwx11FjsahJFzzmQzO4OPJxsjA6PPLPEzP47YdE\nhcTf8RWnUMZ75zEmwAwC/9J1/GNeyxIYvJ+43aT89iNSNtFSJ/V2l4D6CQKBgAyk\nGkEjQV2TFjvqSpekJQJw2nqWHM0KZafMlN7m5aEs8DHPRvbQT7P2khGFNse7xHIh\nLp9N9vdPYpZnpF8uYJnFPoScutcjcYKUZ4sjxCoN1WUgQaMG+mDazImiXEUOwSlZ\ndzPLr0qZuWGqVdhO+9cmxtBe2Ca8tH0R4PFMR9/5AoGBAJ0Dmsae1sYE7mvBn+Ai\nrpO/atgzPA4q9xLF6nMdx3VB77UkSQwDy6XuwqH0vLE0klmGLNiTHD6ChiACVlhc\noInuvV18D4nn9goiuSi0L3afQsgPM/D5hfpufWwHctV4FiSiCRObSAisaXCDnhU9\nnzRG3Htwx2/7Qau1B6DfXePU\n-----END PRIVATE KEY-----\n",
+  "client_email": "mahxs8@gifted-monitor-343807.iam.gserviceaccount.com",
+  "client_id": "114879080054100300086",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/mahxs8%40gifted-monitor-343807.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
