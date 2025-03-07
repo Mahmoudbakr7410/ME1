@@ -3,6 +3,7 @@ import pandas as pd
 from fpdf import FPDF  # For PDF export
 import tempfile
 import os
+import time
 
 # Custom CSS to set the background color to green
 st.markdown(
@@ -255,46 +256,53 @@ def main():
 
             st.write(f"Key Items Threshold: {key_items_threshold}")
 
-            # Identify Key Items
-            key_items = population_data[population_data["Item Value"] >= key_items_threshold]
-            st.write("Key Items:")
-            st.write(key_items)
+            # Add a "Run Sampling" button
+            if st.button("Run Sampling"):
+                # Show progress bar with GIF
+                with st.spinner("Running sampling process..."):
+                    st.image("https://s3.gifyu.com/images/bbQzJ.gif", use_column_width=True)
+                    time.sleep(4)  # Simulate a 4-second delay for the sampling process
 
-            # Calculate Coverage Ratio
-            key_items_sum = key_items["Item Value"].sum()
-            coverage_ratio = calculate_coverage_ratio(key_items_sum, total_population_value)
-            st.write(f"Coverage Ratio: {coverage_ratio:.2f}%")
+                # Identify Key Items
+                key_items = population_data[population_data["Item Value"] >= key_items_threshold]
+                st.write("Key Items:")
+                st.write(key_items)
 
-            # Phase 2: Sample Size Determination
-            st.header("Phase 2: Sample Size Determination")
-            assurance_level = st.selectbox(ASSURANCE_LEVEL, ["Little", "Some", "Medium", "Persuasive"])
+                # Calculate Coverage Ratio
+                key_items_sum = key_items["Item Value"].sum()
+                coverage_ratio = calculate_coverage_ratio(key_items_sum, total_population_value)
+                st.write(f"Coverage Ratio: {coverage_ratio:.2f}%")
 
-            # Determine CRA based on control approach and inherent risk
-            cra_level = determine_cra(control_approach, inherent_risk)
-            st.write(f"Combined Risk Assessment (CRA): {cra_level}")
+                # Phase 2: Sample Size Determination
+                st.header("Phase 2: Sample Size Determination")
+                assurance_level = st.selectbox(ASSURANCE_LEVEL, ["Little", "Some", "Medium", "Persuasive"])
 
-            # Get Multiplier from Coverage Matrix
-            multiplier = get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio)
-            st.write(f"Multiplier: {multiplier}")
+                # Determine CRA based on control approach and inherent risk
+                cra_level = determine_cra(control_approach, inherent_risk)
+                st.write(f"Combined Risk Assessment (CRA): {cra_level}")
 
-            # Calculate Sample Size
-            number_of_key_items = len(key_items)
-            sample_size = calculate_sample_size(number_of_key_items, multiplier)
-            st.write(f"Final Sample Size: {sample_size}")
+                # Get Multiplier from Coverage Matrix
+                multiplier = get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio)
+                st.write(f"Multiplier: {multiplier}")
 
-            # Export Options
-            st.header("Export Results")
-            if st.button("Export to PDF"):
-                pdf_file = export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
-                with open(pdf_file, "rb") as f:
-                    st.download_button("Download PDF", f, file_name="audit_sampling_report.pdf")
-                os.remove(pdf_file)  # Clean up temporary file
+                # Calculate Sample Size
+                number_of_key_items = len(key_items)
+                sample_size = calculate_sample_size(number_of_key_items, multiplier)
+                st.write(f"Final Sample Size: {sample_size}")
 
-            if st.button("Export to Excel"):
-                excel_file = export_to_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
-                with open(excel_file, "rb") as f:
-                    st.download_button("Download Excel", f, file_name="audit_sampling_report.xlsx")
-                os.remove(excel_file)  # Clean up temporary file
+                # Export Options
+                st.header("Export Results")
+                if st.button("Export to PDF"):
+                    pdf_file = export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
+                    with open(pdf_file, "rb") as f:
+                        st.download_button("Download PDF", f, file_name="audit_sampling_report.pdf")
+                    os.remove(pdf_file)  # Clean up temporary file
+
+                if st.button("Export to Excel"):
+                    excel_file = export_to_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
+                    with open(excel_file, "rb") as f:
+                        st.download_button("Download Excel", f, file_name="audit_sampling_report.xlsx")
+                    os.remove(excel_file)  # Clean up temporary file
 
 if __name__ == "__main__":
     main()
