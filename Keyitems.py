@@ -371,7 +371,12 @@ def main():
             if st.session_state.get("sampling_complete", False):
                 st.header("Export Results")
                 if st.button("Export to PDF and Excel"):
-                    user_name = os.getlogin()
+                    # Try to get the username, or use a placeholder if it fails
+                    try:
+                        user_name = os.getlogin()
+                    except OSError:
+                        user_name = "Unknown User"  # Placeholder if username cannot be retrieved
+                    
                     computer_id = str(uuid.getnode())
                     pdf_file, excel_file = export_to_pdf_and_excel(
                         key_items, sample_size, additional_sample, coverage_ratio, cra_level, assurance_level,
