@@ -9,6 +9,7 @@ from googleapiclient.http import MediaFileUpload
 import json
 import time
 import uuid
+import numpy as np
 
 # Constants
 PLANNING_MATERIALITY = "Planning Materiality"
@@ -19,6 +20,9 @@ ACCOUNT_TYPE = "Account Type (Asset/Income or Liability/Expense)"
 INHERENT_RISK = "Inherent Risk Level (Low or High)"
 COMBINED_RISK = "Combined Risk Level"
 ASSURANCE_LEVEL = "Assurance Level from Other Procedures (Little, Some, Medium, Persuasive)"
+SAMPLING_APPROACH = "Sampling Approach (MUS or Attribute Sampling)"
+AUDIT_TYPE = "Audit Type (Full Year or Interim)"
+MONTHS_TESTED = "Number of Months Being Tested"
 
 # Google Drive API Setup
 SCOPES = ["https://www.googleapis.com/auth/drive"]
@@ -240,6 +244,16 @@ def main():
     # Debit/Credit Account Nature
     account_nature = st.sidebar.selectbox("Is this a Debit or Credit account?", ["Debit", "Credit"])
 
+    # Sampling Approach
+    sampling_approach = st.sidebar.selectbox(SAMPLING_APPROACH, ["MUS", "Attribute Sampling"])
+
+    if sampling_approach == "MUS":
+        audit_type = st.sidebar.selectbox(AUDIT_TYPE, ["Full Year", "Interim"])
+        if audit_type == "Interim":
+            months_tested = st.sidebar.number_input(MONTHS_TESTED, min_value=1, max_value=12, value=6)
+    else:
+        sample_size = st.sidebar.number_input("Enter Sample Size for Attribute Sampling", min_value=1, value=30)
+
     # Upload CSV for Key Items
     uploaded_file = st.file_uploader("Upload Population Data (CSV)", type=["csv"])
     if uploaded_file:
@@ -346,8 +360,19 @@ def main():
             multiplier = get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio)
 
             # Calculate Sample Size
-            number_of_key_items = len(key_items)
-            sample_size = calculate_sample_size(number_of_key_items, multiplier)
+            if sampling_approach == "MUS":
+                if audit_type == "Full Year":
+                    number_of_key_items = len(key_items)
+                    sample_size = calculate_sample_size(number_of_key_items, multiplier)
+                else:
+                    # Prorate sample size based on months tested
+                    number_of_key_items = len(key_items)
+                    sample_size = calculate_sample_size(number_of_key_items, multiplier)
+                    sample_size = int(sample_size * (months_tested / 12))
+            else:
+                # Attribute Sampling: Use user-provided sample size
+                sample_size = sample_size
+
             st.write(f"Final Sample Size: {sample_size}")
 
             # Calculate Additional Sample Size for Negative Testing
