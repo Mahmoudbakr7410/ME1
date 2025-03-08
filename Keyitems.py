@@ -7,6 +7,8 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import json
+import time
+import uuid
 
 # Constants
 PLANNING_MATERIALITY = "Planning Materiality"
@@ -72,9 +74,6 @@ def get_testing_threshold_percentage(control_approach, account_type, inherent_ri
             return (10, 25) if account_type == "Asset/Income" else (5, 10)
 
 def calculate_key_items_threshold(tolerable_error, percentage_range):
-    st.write(f"Testing Threshold Percentage Range: {percentage_range[0]}% to {percentage_range[1]}%")
-    
-    # Let the user input a specific point within the range
     selected_percentage = st.number_input(
         "Enter a specific testing threshold percentage within the range:",
         min_value=float(percentage_range[0]),
@@ -93,9 +92,9 @@ def calculate_key_items_threshold(tolerable_error, percentage_range):
         )
         if not rationale:
             st.error("Please provide a rationale for audit documentation.")
-            return None
-    
-    return tolerable_error * (selected_percentage / 100)
+            return None, None
+        return tolerable_error * (selected_percentage / 100), rationale
+    return tolerable_error * (selected_percentage / 100), None
 
 def calculate_coverage_ratio(key_items_sum, total_population_value):
     return (key_items_sum / total_population_value) * 100
@@ -114,7 +113,6 @@ def determine_cra(control_approach, inherent_risk):
             return "High CRA"
 
 def get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio):
-    # Define the coverage matrix
     coverage_matrix = {
         "Minimal CRA": {
             "Little": {0: 0.5, 10: 0.4, 30: 0.1},
@@ -141,18 +139,23 @@ def get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio):
             "Persuasive": {0: "*", 10: "*", 30: "*", 50: "*", 70: "*", 90: "*", 100: "*"}
         }
     }
-
-    # Find the closest coverage ratio in the matrix
     closest_ratio = min(coverage_matrix[cra_level][assurance_level].keys(), key=lambda x: abs(x - coverage_ratio))
     return coverage_matrix[cra_level][assurance_level][closest_ratio]
 
-def calculate_sample_size(number_of_key_items, multiplier):
+def calculate_sample_size(number_of_key_items, multiplier, is_credit_account):
     if multiplier == "*" or multiplier == 0:
-        return number_of_key_items  # Keep key items as is
-    return number_of_key_items + int(number_of_key_items * multiplier)
+        sample_size = number_of_key_items
+    else:
+        sample_size = number_of_key_items + int(number_of_key_items * multiplier)
+    
+    # If account is credit, reduce sample size to 10% with a minimum of 1
+    if is_credit_account:
+        sample_size = max(1, int(sample_size * 0.1))
+    return sample_size
 
-# Export to PDF
-def export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level):
+# Export to PDF and Excel
+def export_to_pdf_and_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level, company_name, audited_year, user_name, computer_id, population_size, population_value, rationale, multiplier):
+    # Generate PDF
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
@@ -160,25 +163,58 @@ def export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_l
     pdf.cell(200, 10, txt="Audit Sampling Report", ln=True, align="C")
     pdf.ln(10)
     
+    pdf.cell(200, 10, txt=f"Company Name: {company_name}", ln=True)
+    pdf.cell(200, 10, txt=f"Audited Year: {audited_year}", ln=True)
     pdf.cell(200, 10, txt=f"Combined Risk Assessment (CRA): {cra_level}", ln=True)
     pdf.cell(200, 10, txt=f"Assurance Level: {assurance_level}", ln=True)
     pdf.cell(200, 10, txt=f"Coverage Ratio: {coverage_ratio:.2f}%", ln=True)
+    pdf.cell(200, 10, txt=f"Multiplier: {multiplier}", ln=True)
     pdf.cell(200, 10, txt=f"Sample Size: {sample_size}", ln=True)
+    pdf.cell(200, 10, txt=f"User Name: {user_name}", ln=True)
+    pdf.cell(200, 10, txt=f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
+    pdf.cell(200, 10, txt=f"Computer ID: {computer_id}", ln=True)
+    pdf.cell(200, 10, txt=f"Population Size: {population_size}", ln=True)
+    pdf.cell(200, 10, txt=f"Population Value: {population_value}", ln=True)
+    pdf.cell(200, 10, txt=f"Rationale: {rationale}", ln=True)
     pdf.ln(10)
     
     pdf.cell(200, 10, txt="Key Items:", ln=True)
     for index, row in key_items.iterrows():
         pdf.cell(200, 10, txt=f"{row['Item Number']} - {row['Item Value']}", ln=True)
     
-    # Save to a temporary file
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-    pdf.output(temp_file.name)
-    return temp_file.name
+    # Save PDF to a temporary file
+    pdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    pdf.output(pdf_file.name)
+    
+    # Generate Excel
+    excel_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    with pd.ExcelWriter(excel_file.name) as writer:
+        key_items.to_excel(writer, sheet_name="Key Items", index=False)
+        summary_data = {
+            "Company Name": [company_name],
+            "Audited Year": [audited_year],
+            "Coverage Ratio": [coverage_ratio],
+            "Multiplier": [multiplier],
+            "Sample Size": [sample_size],
+            "User Name": [user_name],
+            "Date": [time.strftime('%Y-%m-%d %H:%M:%S')],
+            "Computer ID": [computer_id],
+            "Population Size": [population_size],
+            "Population Value": [population_value],
+            "Rationale": [rationale]
+        }
+        pd.DataFrame(summary_data).to_excel(writer, sheet_name="Summary", index=False)
+    
+    return pdf_file.name, excel_file.name
 
 # Streamlit App
 def main():
     st.title("Audit Sampling Software")
     st.sidebar.header("User Inputs")
+
+    # Company Name and Audited Year
+    company_name = st.sidebar.text_input("Company Name")
+    audited_year = st.sidebar.text_input("Audited Year")
 
     # Phase 1: Key Items Selection
     st.header("Phase 1: Key Items Selection")
@@ -187,6 +223,9 @@ def main():
     control_approach = st.sidebar.selectbox(CONTROL_APPROACH, ["Reliance", "No Reliance"])
     account_type = st.sidebar.selectbox(ACCOUNT_TYPE, ["Asset/Income", "Liability/Expense"])
     inherent_risk = st.sidebar.selectbox(INHERENT_RISK, ["Low", "High"])
+
+    # Debit/Credit Account Nature
+    account_nature = st.sidebar.selectbox("Is this a Debit or Credit account?", ["Debit", "Credit"])
 
     # Upload CSV for Key Items
     uploaded_file = st.file_uploader("Upload Population Data (CSV)", type=["csv"])
@@ -251,7 +290,9 @@ def main():
 
             # Calculate Total Population Value (sum of Item Value)
             total_population_value = population_data["Item Value"].sum()
+            population_size = len(population_data)
             st.sidebar.write(f"**Total Population Value (Auto-calculated):** {total_population_value}")
+            st.sidebar.write(f"**Population Size (Auto-calculated):** {population_size}")
 
             # Calculate Tolerable Error
             tolerable_error = calculate_tolerable_error(planning_materiality, tolerable_error_percentage)
@@ -261,11 +302,9 @@ def main():
             percentage_range = get_testing_threshold_percentage(control_approach, account_type, inherent_risk)
             
             # Calculate Key Items Threshold
-            key_items_threshold = calculate_key_items_threshold(tolerable_error, percentage_range)
+            key_items_threshold, rationale = calculate_key_items_threshold(tolerable_error, percentage_range)
             if key_items_threshold is None:
                 return  # Stop execution if no rationale is provided for a higher percentage
-
-            st.write(f"Key Items Threshold: {key_items_threshold}")
 
             # Identify Key Items
             key_items = population_data[population_data["Item Value"] >= key_items_threshold]
@@ -287,18 +326,17 @@ def main():
 
             # Get Multiplier from Coverage Matrix
             multiplier = get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio)
-            st.write(f"Multiplier: {multiplier}")
 
             # Calculate Sample Size
             number_of_key_items = len(key_items)
-            sample_size = calculate_sample_size(number_of_key_items, multiplier)
+            is_credit_account = account_nature == "Credit"
+            sample_size = calculate_sample_size(number_of_key_items, multiplier, is_credit_account)
             st.write(f"Final Sample Size: {sample_size}")
 
             # Run Sampling Button
             if st.button("Run Sampling"):
                 with st.spinner("Please wait maham KI selector..."):
                     # Simulate processing time (optional)
-                    import time
                     time.sleep(2)  # Simulate a 2-second delay
 
                     # Set a flag to indicate sampling is complete
@@ -307,19 +345,34 @@ def main():
             # Export Options (only show if sampling is complete)
             if st.session_state.get("sampling_complete", False):
                 st.header("Export Results")
-                if st.button("Export to PDF"):
-                    pdf_file = export_to_pdf(key_items, sample_size, coverage_ratio, cra_level, assurance_level)
+                if st.button("Export to PDF and Excel"):
+                    user_name = os.getlogin()
+                    computer_id = str(uuid.getnode())
+                    pdf_file, excel_file = export_to_pdf_and_excel(
+                        key_items, sample_size, coverage_ratio, cra_level, assurance_level,
+                        company_name, audited_year, user_name, computer_id, population_size,
+                        total_population_value, rationale, multiplier
+                    )
+                    
+                    # Download PDF
                     with open(pdf_file, "rb") as f:
-                        st.download_button("Download PDF", f, file_name="audit_sampling_report.pdf")
+                        st.download_button("Download PDF", f, file_name=f"{company_name}_audit_sampling_report.pdf")
+                    
+                    # Download Excel
+                    with open(excel_file, "rb") as f:
+                        st.download_button("Download Excel", f, file_name=f"{company_name}_audit_sampling_report.xlsx")
                     
                     # Upload to Google Drive
-                    file_id = upload_to_google_drive(pdf_file)
-                    if file_id:
-                        st.success(f"PDF uploaded to Google Drive with ID: {file_id}")
+                    pdf_file_id = upload_to_google_drive(pdf_file)
+                    excel_file_id = upload_to_google_drive(excel_file)
+                    if pdf_file_id and excel_file_id:
+                        st.success(f"Files uploaded to Google Drive with IDs: PDF - {pdf_file_id}, Excel - {excel_file_id}")
                     else:
-                        st.error("Failed to upload PDF to Google Drive.")
+                        st.error("Failed to upload files to Google Drive.")
                     
-                    os.remove(pdf_file)  # Clean up temporary file
+                    # Clean up temporary files
+                    os.remove(pdf_file)
+                    os.remove(excel_file)
 
 if __name__ == "__main__":
     main()
