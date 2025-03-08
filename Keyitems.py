@@ -142,19 +142,25 @@ def get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio):
     closest_ratio = min(coverage_matrix[cra_level][assurance_level].keys(), key=lambda x: abs(x - coverage_ratio))
     return coverage_matrix[cra_level][assurance_level][closest_ratio]
 
-def calculate_sample_size(number_of_key_items, multiplier, is_credit_account):
+def calculate_sample_size(number_of_key_items, multiplier):
     if multiplier == "*" or multiplier == 0:
-        sample_size = number_of_key_items
+        return number_of_key_items  # Keep key items as is
+    return number_of_key_items + int(number_of_key_items * multiplier)
+
+def calculate_additional_sample_size(population_data, account_nature, sample_size):
+    """Calculate additional 10% sample size for the other side (non-natural side)."""
+    if account_nature == "Debit":
+        other_side_data = population_data[population_data["Negative Testing"] == "Credit"]
     else:
-        sample_size = number_of_key_items + int(number_of_key_items * multiplier)
+        other_side_data = population_data[population_data["Negative Testing"] == "Debit"]
     
-    # If account is credit, reduce sample size to 10% with a minimum of 1
-    if is_credit_account:
-        sample_size = max(1, int(sample_size * 0.1))
-    return sample_size
+    additional_sample_size = max(1, int(sample_size * 0.1))  # Minimum of 1
+    if len(other_side_data) < additional_sample_size:
+        additional_sample_size = len(other_side_data)  # Adjust if population is smaller
+    return other_side_data.sample(n=additional_sample_size, random_state=42)
 
 # Export to PDF and Excel
-def export_to_pdf_and_excel(key_items, sample_size, coverage_ratio, cra_level, assurance_level, company_name, audited_year, user_name, computer_id, population_size, population_value, rationale, multiplier):
+def export_to_pdf_and_excel(key_items, sample_size, additional_sample, coverage_ratio, cra_level, assurance_level, company_name, audited_year, user_name, computer_id, population_size, population_value, rationale, multiplier):
     # Generate PDF
     pdf = FPDF()
     pdf.add_page()
@@ -170,6 +176,7 @@ def export_to_pdf_and_excel(key_items, sample_size, coverage_ratio, cra_level, a
     pdf.cell(200, 10, txt=f"Coverage Ratio: {coverage_ratio:.2f}%", ln=True)
     pdf.cell(200, 10, txt=f"Multiplier: {multiplier}", ln=True)
     pdf.cell(200, 10, txt=f"Sample Size: {sample_size}", ln=True)
+    pdf.cell(200, 10, txt=f"Additional Sample Size (Negative Testing): {len(additional_sample)}", ln=True)
     pdf.cell(200, 10, txt=f"User Name: {user_name}", ln=True)
     pdf.cell(200, 10, txt=f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
     pdf.cell(200, 10, txt=f"Computer ID: {computer_id}", ln=True)
@@ -182,6 +189,10 @@ def export_to_pdf_and_excel(key_items, sample_size, coverage_ratio, cra_level, a
     for index, row in key_items.iterrows():
         pdf.cell(200, 10, txt=f"{row['Item Number']} - {row['Item Value']}", ln=True)
     
+    pdf.cell(200, 10, txt="Additional Sample (Negative Testing):", ln=True)
+    for index, row in additional_sample.iterrows():
+        pdf.cell(200, 10, txt=f"{row['Item Number']} - {row['Item Value']}", ln=True)
+    
     # Save PDF to a temporary file
     pdf_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     pdf.output(pdf_file.name)
@@ -190,12 +201,14 @@ def export_to_pdf_and_excel(key_items, sample_size, coverage_ratio, cra_level, a
     excel_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
     with pd.ExcelWriter(excel_file.name) as writer:
         key_items.to_excel(writer, sheet_name="Key Items", index=False)
+        additional_sample.to_excel(writer, sheet_name="Negative Testing", index=False)
         summary_data = {
             "Company Name": [company_name],
             "Audited Year": [audited_year],
             "Coverage Ratio": [coverage_ratio],
             "Multiplier": [multiplier],
             "Sample Size": [sample_size],
+            "Additional Sample Size": [len(additional_sample)],
             "User Name": [user_name],
             "Date": [time.strftime('%Y-%m-%d %H:%M:%S')],
             "Computer ID": [computer_id],
@@ -243,6 +256,7 @@ def main():
         date_col = st.selectbox("Select Column for Date (Optional)", [None] + columns, index=0)
         currency_col = st.selectbox("Select Column for Currency (Optional)", [None] + columns, index=0)
         account_number_col = st.selectbox("Select Column for Account Number (Optional)", [None] + columns, index=0)
+        negative_testing_col = st.selectbox("Select Column for Negative Testing (Optional)", [None] + columns, index=0)
 
         # Validate mandatory columns
         if not item_number_col or not item_value_col:
@@ -261,6 +275,8 @@ def main():
                 rename_dict[currency_col] = "Currency"
             if account_number_col:
                 rename_dict[account_number_col] = "Account Number"
+            if negative_testing_col:
+                rename_dict[negative_testing_col] = "Negative Testing"
 
             population_data.rename(columns=rename_dict, inplace=True)
 
@@ -274,6 +290,8 @@ def main():
                 keep_columns.append("Currency")
             if account_number_col:
                 keep_columns.append("Account Number")
+            if negative_testing_col:
+                keep_columns.append("Negative Testing")
 
             population_data = population_data[keep_columns]
 
@@ -329,9 +347,16 @@ def main():
 
             # Calculate Sample Size
             number_of_key_items = len(key_items)
-            is_credit_account = account_nature == "Credit"
-            sample_size = calculate_sample_size(number_of_key_items, multiplier, is_credit_account)
+            sample_size = calculate_sample_size(number_of_key_items, multiplier)
             st.write(f"Final Sample Size: {sample_size}")
+
+            # Calculate Additional Sample Size for Negative Testing
+            if negative_testing_col:
+                additional_sample = calculate_additional_sample_size(population_data, account_nature, sample_size)
+                st.write("Additional Sample (Negative Testing):")
+                st.write(additional_sample)
+            else:
+                additional_sample = pd.DataFrame()  # Empty DataFrame if no negative testing column
 
             # Run Sampling Button
             if st.button("Run Sampling"):
@@ -349,7 +374,7 @@ def main():
                     user_name = os.getlogin()
                     computer_id = str(uuid.getnode())
                     pdf_file, excel_file = export_to_pdf_and_excel(
-                        key_items, sample_size, coverage_ratio, cra_level, assurance_level,
+                        key_items, sample_size, additional_sample, coverage_ratio, cra_level, assurance_level,
                         company_name, audited_year, user_name, computer_id, population_size,
                         total_population_value, rationale, multiplier
                     )
