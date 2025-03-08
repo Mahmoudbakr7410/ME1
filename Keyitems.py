@@ -164,7 +164,7 @@ def calculate_additional_sample_size(population_data, account_nature, sample_siz
     return other_side_data.sample(n=additional_sample_size, random_state=42)
 
 # Export to PDF and Excel
-def export_to_pdf_and_excel(key_items, sample_size, additional_sample, coverage_ratio, cra_level, assurance_level, company_name, audited_year, user_name, computer_id, population_size, population_value, rationale, multiplier):
+def export_to_pdf_and_excel(key_items, sample_size, additional_sample, coverage_ratio, cra_level, assurance_level, company_name, audited_year, user_name, computer_id, population_size, population_value, rationale, multiplier, remaining_population_samples):
     # Generate PDF
     pdf = FPDF()
     pdf.add_page()
@@ -181,6 +181,7 @@ def export_to_pdf_and_excel(key_items, sample_size, additional_sample, coverage_
     pdf.cell(200, 10, txt=f"Multiplier: {multiplier}", ln=True)
     pdf.cell(200, 10, txt=f"Sample Size: {sample_size}", ln=True)
     pdf.cell(200, 10, txt=f"Additional Sample Size (Negative Testing): {len(additional_sample)}", ln=True)
+    pdf.cell(200, 10, txt=f"Remaining Population Sample Size: {len(remaining_population_samples)}", ln=True)
     pdf.cell(200, 10, txt=f"User Name: {user_name}", ln=True)
     pdf.cell(200, 10, txt=f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
     pdf.cell(200, 10, txt=f"Computer ID: {computer_id}", ln=True)
@@ -189,12 +190,19 @@ def export_to_pdf_and_excel(key_items, sample_size, additional_sample, coverage_
     pdf.cell(200, 10, txt=f"Rationale: {rationale}", ln=True)
     pdf.ln(10)
     
-    pdf.cell(200, 10, txt="Key Items:", ln=True)
+    # Key Items
+    pdf.cell(200, 10, txt="Key Items (Above TE Threshold):", ln=True)
     for index, row in key_items.iterrows():
         pdf.cell(200, 10, txt=f"{row['Item Number']} - {row['Item Value']}", ln=True)
     
+    # Additional Sample (Negative Testing)
     pdf.cell(200, 10, txt="Additional Sample (Negative Testing):", ln=True)
     for index, row in additional_sample.iterrows():
+        pdf.cell(200, 10, txt=f"{row['Item Number']} - {row['Item Value']}", ln=True)
+    
+    # Remaining Population Samples (Added due to Multiplier)
+    pdf.cell(200, 10, txt="Remaining Population Samples (Added due to Multiplier):", ln=True)
+    for index, row in remaining_population_samples.iterrows():
         pdf.cell(200, 10, txt=f"{row['Item Number']} - {row['Item Value']}", ln=True)
     
     # Save PDF to a temporary file
@@ -204,8 +212,16 @@ def export_to_pdf_and_excel(key_items, sample_size, additional_sample, coverage_
     # Generate Excel
     excel_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
     with pd.ExcelWriter(excel_file.name) as writer:
+        # Key Items Sheet
         key_items.to_excel(writer, sheet_name="Key Items", index=False)
+        
+        # Additional Sample Sheet
         additional_sample.to_excel(writer, sheet_name="Negative Testing", index=False)
+        
+        # Remaining Population Samples Sheet
+        remaining_population_samples.to_excel(writer, sheet_name="Remaining Population Samples", index=False)
+        
+        # Summary Sheet
         summary_data = {
             "Company Name": [company_name],
             "Audited Year": [audited_year],
@@ -213,6 +229,7 @@ def export_to_pdf_and_excel(key_items, sample_size, additional_sample, coverage_
             "Multiplier": [multiplier],
             "Sample Size": [sample_size],
             "Additional Sample Size": [len(additional_sample)],
+            "Remaining Population Sample Size": [len(remaining_population_samples)],
             "User Name": [user_name],
             "Date": [time.strftime('%Y-%m-%d %H:%M:%S')],
             "Computer ID": [computer_id],
@@ -383,6 +400,17 @@ def main():
             else:
                 additional_sample = pd.DataFrame()  # Empty DataFrame if no negative testing column
 
+            # Identify remaining population after key items are selected
+            remaining_population = population_data[~population_data["Item Number"].isin(key_items["Item Number"])]
+            
+            # Calculate the number of additional samples based on the multiplier
+            additional_sample_size = int(len(key_items) * multiplier)
+            
+            # Stratify the remaining population and select samples
+            remaining_population_samples = remaining_population.sample(n=min(additional_sample_size, len(remaining_population)), random_state=42)
+            st.write("Remaining Population Samples (Added due to Multiplier):")
+            st.write(remaining_population_samples)
+
             # Run Sampling Button
             if st.button("Run Sampling"):
                 with st.spinner("Please wait maham KI selector..."):
@@ -406,7 +434,7 @@ def main():
                     pdf_file, excel_file = export_to_pdf_and_excel(
                         key_items, sample_size, additional_sample, coverage_ratio, cra_level, assurance_level,
                         company_name, audited_year, user_name, computer_id, population_size,
-                        total_population_value, rationale, multiplier
+                        total_population_value, rationale, multiplier, remaining_population_samples
                     )
                     
                     # Download PDF
