@@ -404,10 +404,13 @@ def main():
 
             # Identify remaining population after key items are selected
             remaining_population = population_data[~population_data["Item Number"].isin(key_items["Item Number"])]
-            
+
             # Calculate the number of additional samples based on the multiplier
-            additional_sample_size = int((total_population_value - key_items_sum) / tolerable_error * multiplier)
-            
+            if multiplier == "*":
+                additional_sample_size = 0  # Skip additional samples if multiplier is "*"
+            else:
+                additional_sample_size = int((total_population_value - key_items_sum) / tolerable_error * multiplier)
+
             # Stratify the remaining population and select samples
             remaining_population_samples = remaining_population.sample(n=min(additional_sample_size, len(remaining_population)), random_state=42)
             st.write("Remaining Population Samples (Added due to Multiplier):")
