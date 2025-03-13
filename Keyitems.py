@@ -146,10 +146,11 @@ def get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio):
     closest_ratio = min(coverage_matrix[cra_level][assurance_level].keys(), key=lambda x: abs(x - coverage_ratio))
     return coverage_matrix[cra_level][assurance_level][closest_ratio]
 
-def calculate_sample_size(number_of_key_items, multiplier):
+def calculate_sample_size(number_of_key_items, multiplier, population_size, tolerable_error):
     if multiplier == "*" or multiplier == 0:
         return number_of_key_items  # Keep key items as is
-    return number_of_key_items + int(number_of_key_items * multiplier)
+    basic_sample_size = (population_size - number_of_key_items) / tolerable_error
+    return number_of_key_items + int(basic_sample_size * multiplier)
 
 def calculate_additional_sample_size(population_data, account_nature, sample_size):
     """Calculate additional 10% sample size for the other side (non-natural side)."""
@@ -380,11 +381,11 @@ def main():
             if sampling_approach == "MUS":
                 if audit_type == "Full Year":
                     number_of_key_items = len(key_items)
-                    sample_size = calculate_sample_size(number_of_key_items, multiplier)
+                    sample_size = calculate_sample_size(number_of_key_items, multiplier, population_size, tolerable_error)
                 else:
                     # Prorate sample size based on months tested
                     number_of_key_items = len(key_items)
-                    sample_size = calculate_sample_size(number_of_key_items, multiplier)
+                    sample_size = calculate_sample_size(number_of_key_items, multiplier, population_size, tolerable_error)
                     sample_size = int(sample_size * (months_tested / 12))
             else:
                 # Attribute Sampling: Use user-provided sample size
