@@ -78,6 +78,7 @@ def get_testing_threshold_percentage(control_approach, account_type, inherent_ri
             return (10, 25) if account_type == "Asset/Income" else (5, 10)
 
 def calculate_key_items_threshold(tolerable_error, percentage_range):
+    st.write(f"**Recommended TE Range:** {percentage_range[0]}% to {percentage_range[1]}%")
     selected_percentage = st.number_input(
         "Enter a specific testing threshold percentage within the range:",
         min_value=float(percentage_range[0]),
@@ -186,8 +187,8 @@ def export_to_pdf_and_excel(key_items, sample_size, additional_sample, coverage_
     pdf.cell(200, 10, txt=f"User Name: {user_name}", ln=True)
     pdf.cell(200, 10, txt=f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
     pdf.cell(200, 10, txt=f"Computer ID: {computer_id}", ln=True)
-    pdf.cell(200, 10, txt=f"Population Size: {population_size}", ln=True)
-    pdf.cell(200, 10, txt=f"Population Value: {population_value}", ln=True)
+    pdf.cell(200, 10, txt=f"Population Size: {population_size:,}", ln=True)  # Format with commas
+    pdf.cell(200, 10, txt=f"Population Value: {population_value:,}", ln=True)  # Format with commas
     pdf.cell(200, 10, txt=f"Rationale: {rationale}", ln=True)
     pdf.ln(10)
     
@@ -341,12 +342,12 @@ def main():
             # Calculate Total Population Value (sum of Item Value)
             total_population_value = population_data["Item Value"].sum()
             population_size = len(population_data)
-            st.sidebar.write(f"**Total Population Value (Auto-calculated):** {total_population_value}")
-            st.sidebar.write(f"**Population Size (Auto-calculated):** {population_size}")
+            st.sidebar.write(f"**Total Population Value (Auto-calculated):** {total_population_value:,.2f}")  # Format with commas
+            st.sidebar.write(f"**Population Size (Auto-calculated):** {population_size:,}")  # Format with commas
 
             # Calculate Tolerable Error
             tolerable_error = calculate_tolerable_error(planning_materiality, tolerable_error_percentage)
-            st.write(f"Tolerable Error: {tolerable_error}")
+            st.write(f"Tolerable Error: {tolerable_error:,.2f}")  # Format with commas
 
             # Determine Testing Threshold Percentage Range
             percentage_range = get_testing_threshold_percentage(control_approach, account_type, inherent_risk)
@@ -391,7 +392,7 @@ def main():
                 # Attribute Sampling: Use user-provided sample size
                 sample_size = sample_size
 
-            st.write(f"Final Sample Size: {sample_size}")
+            st.write(f"Final Sample Size: {sample_size:,}")  # Format with commas
 
             # Calculate Additional Sample Size for Negative Testing
             if negative_testing_col:
