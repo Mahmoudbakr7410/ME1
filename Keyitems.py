@@ -147,10 +147,10 @@ def get_coverage_matrix_multiplier(cra_level, assurance_level, coverage_ratio):
     closest_ratio = min(coverage_matrix[cra_level][assurance_level].keys(), key=lambda x: abs(x - coverage_ratio))
     return coverage_matrix[cra_level][assurance_level][closest_ratio]
 
-def calculate_sample_size(number_of_key_items, multiplier, population_size, tolerable_error):
+def calculate_sample_size(number_of_key_items, multiplier, population_value, key_items_sum, tolerable_error):
     if multiplier == "*" or multiplier == 0:
         return number_of_key_items  # Keep key items as is
-    basic_sample_size = (population_size - number_of_key_items) / tolerable_error
+    basic_sample_size = (population_value - key_items_sum) / tolerable_error
     return number_of_key_items + int(basic_sample_size * multiplier)
 
 def calculate_additional_sample_size(population_data, account_nature, sample_size):
@@ -382,11 +382,11 @@ def main():
             if sampling_approach == "MUS":
                 if audit_type == "Full Year":
                     number_of_key_items = len(key_items)
-                    sample_size = calculate_sample_size(number_of_key_items, multiplier, population_size, tolerable_error)
+                    sample_size = calculate_sample_size(number_of_key_items, multiplier, total_population_value, key_items_sum, tolerable_error)
                 else:
                     # Prorate sample size based on months tested
                     number_of_key_items = len(key_items)
-                    sample_size = calculate_sample_size(number_of_key_items, multiplier, population_size, tolerable_error)
+                    sample_size = calculate_sample_size(number_of_key_items, multiplier, total_population_value, key_items_sum, tolerable_error)
                     sample_size = int(sample_size * (months_tested / 12))
             else:
                 # Attribute Sampling: Use user-provided sample size
@@ -406,7 +406,7 @@ def main():
             remaining_population = population_data[~population_data["Item Number"].isin(key_items["Item Number"])]
             
             # Calculate the number of additional samples based on the multiplier
-            additional_sample_size = int(len(key_items) * multiplier)
+            additional_sample_size = int((total_population_value - key_items_sum) / tolerable_error * multiplier)
             
             # Stratify the remaining population and select samples
             remaining_population_samples = remaining_population.sample(n=min(additional_sample_size, len(remaining_population)), random_state=42)
